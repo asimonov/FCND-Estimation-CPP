@@ -167,6 +167,16 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  //ekfState: x,y,z,vx,vy,vz,yaw
+  predictedState(0) += curState(3)*dt;
+  predictedState(1) += curState(4)*dt;
+  predictedState(2) += curState(5)*dt;
+  // controls vector u = acc_x_b, acc_y_b, acc_z_b, yaw_change
+  V3F rot_u = attitude.Rotate_BtoI(accel);
+  predictedState(3) += rot_u.x * dt;
+  predictedState(4) += rot_u.y * dt;
+  predictedState(5) += (-CONST_GRAVITY + rot_u.z) * dt;
+  //yaw is already integrated in UpdateFromIMU
 
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
@@ -174,7 +184,7 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   return predictedState;
 }
 
-MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
+MatrixXf QuadEstimatorEKF::GetRbgPrime(float phi, float theta, float psi)
 {
   // first, figure out the Rbg_prime
   MatrixXf RbgPrime(3, 3);
@@ -194,7 +204,17 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  RbgPrime(0,0) = cos(theta) * cos(psi);
+  RbgPrime(0,1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
+  RbgPrime(0,2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
 
+  RbgPrime(1,0) = cos(theta) * sin(psi);
+  RbgPrime(1,1) = sin(phi) * sin(theta) * sin(psi) + cos(phi) * cos(psi);
+  RbgPrime(1,2) = cos(phi) * sin(theta) * sin(psi) - sin(phi) * cos(psi);
+
+  RbgPrime(2,0) = -sin(theta);
+  RbgPrime(2,1) = cos(theta) * sin(phi);
+  RbgPrime(2,2) = cos(theta) * cos(phi);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
