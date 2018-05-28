@@ -165,6 +165,50 @@ updated settings:
 
 
 
+
+#### 4. Implement the magnetometer update.
+
+Requirements:
+* should properly include the magnetometer data into the state
+* should make sure to correctly measure the angle error between the current state and the magnetometer value (error should be the short way around, not the long way)
+
+We run `Scenario 10: Magnetometer Update` and see the yaw estimation
+error before taking into account the magnetometer measurements.
+We tune `QYawStd = .04` so that uncertainty in yaw estimate grows
+roughly as data:
+
+![Scenario 10 before measurement update](./images/writeup/yaw-error-before.png)
+
+We then proceed to implement `UpdateFromMag()` function as
+follows:
+
+```cpp
+  //ekfState: x,y,z,vx,vy,vz,yaw
+  hPrime(6) = 1.f;
+  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_Mag;
+  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
+
+  float diff = magYaw - ekfState(6);
+  if (diff > F_PI) diff -= 2.f*F_PI;
+  if (diff < -F_PI) diff += 2.f*F_PI;
+  zFromX(0) = magYaw - diff;
+
+  ekfState += K * (z - zFromX);
+
+  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
+  eye.setIdentity();
+  ekfCov = (eye - K*hPrime) * ekfCov;
+```
+
+This works as expected and we then tune `QYawStd = .12` so that
+empirically our errors in yaw measurement using magnetometer
+be within about one standard deviation of the true value.
+
+![Scenario 10 after measurement update](./images/writeup/yaw-error-after.png)
+
+
+
+
 Here's | A | Snappy | Table
 --- | --- | --- | ---
 1 | `highlight` | **bold** | 7.41

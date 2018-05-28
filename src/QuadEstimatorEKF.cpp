@@ -312,8 +312,23 @@ void QuadEstimatorEKF::UpdateFromMag(float magYaw)
   //  - Make sure to normalize the difference between your measured and estimated yaw
   //    (you don't want to update your yaw the long way around the circle)
   //  - The magnetomer measurement covariance is available in member variable R_Mag
-  ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+  //ekfState: x,y,z,vx,vy,vz,yaw
+  hPrime(6) = 1.f;
+  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_Mag;
+  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
+
+  float diff = magYaw - ekfState(6);
+  if (diff > F_PI) diff -= 2.f*F_PI;
+  if (diff < -F_PI) diff += 2.f*F_PI;
+  zFromX(0) = magYaw - diff;
+
+  ekfState += K * (z - zFromX);
+
+  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
+  eye.setIdentity();
+  ekfCov = (eye - K*hPrime) * ekfCov;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
