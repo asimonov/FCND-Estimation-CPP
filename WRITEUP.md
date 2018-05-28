@@ -42,12 +42,37 @@ within found estimates of standard deviation:
 #### 2. Implement a better rate gyro attitude integration scheme in the `UpdateFromIMU()` function.
 
 Requrements:
-The improved integration scheme should result in an attitude estimator of < 0.1 rad for each of the Euler angles for a duration of at least 3 seconds during the simulation. The integration scheme should use quaternions to improve performance over the current simple integration scheme.
+* attitude estimation of < 0.1 rad for each of the Euler angles for a
+at least 3 seconds
+* use quaternions to improve
+performance over the current simple integration scheme
 
+We implement non-linear complimentary filter as described in section 7.1.2 of
+[Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj#/54894644/)
 
+This is what our part of the code looks like:
 
+```
+  //ekfState: x,y,z,vx,vy,vz,yaw
+  Quaternion<float> q = Quaternion<float>::FromEulerYPR(ekfState(6), pitchEst, rollEst);
+  Quaternion<float> dq;
+  dq.IntegrateBodyRate(gyro, dtIMU); // will overwrite dq, i.e. integrate from zero
+  Quaternion<float> q_bar = dq * q;
 
+  float predictedPitch = q_bar.Pitch();
+  float predictedRoll = q_bar.Roll();
+  ekfState(6) = q_bar.Yaw();	// yaw
+```
 
+The rest of the code remains unchanged, i.e.
+* the yaw angle gets adjusted to be between -PI and PI
+* gyro and accelerometer readings get fused with `tau=1.0`
+
+The resulting non-linear complimentary filter implementation
+is doing a great job, significantly improving errors between
+ground truth and the estimated roll/pitch/yaw:
+
+![Scenario 7](./images/writeup/complementary-filter.png)
 
 
 Here's | A | Snappy | Table
