@@ -208,6 +208,91 @@ be within about one standard deviation of the true value.
 
 
 
+#### 5. Implement the GPS update
+
+Requirements:
+* The estimator should correctly incorporate the GPS information to update the current state estimate
+
+
+We run `Scenario 11: GPS Update` using ground truth data
+rather than estimates.
+We can fly the trajectory.
+And we see that errors between our estimator
+and actual values grow:
+
+![Scenario 11 ideal sensor and estimator](./images/writeup/gps-error-ideal.png)
+
+What if we actually used these estimated values
+to control our quad? (Keeping to ideal IMU measurements only)
+
+![Scenario 11 using the ideal IMU only](./images/writeup/gps-error-before.png)
+
+We do not stick to desired trajectory well.
+
+If we become even more realistic and use noisy IMU, just like in real life,
+we see that it just does not work. The quad is all over the place.
+So we need some sort of sensor that would correct our possible drift
+back to reality.
+GPS is exactly this kind of sensor.
+It is noisy but it does not have drift.
+
+But before we do this we change `QPosZStd`, the process noise in
+altitude direction so the error we see roughly corresponds
+to predicted growth of uncertainty. We have to adjust it from 0.1 to 5!
+
+![Scenario 11 using the noisy IMU only](./images/writeup/gps-error-before2.png)
+
+
+Then we implement `UpdateFromGPS()` in a way that is very similar to magnetometer update earlier:
+
+```cpp
+  hPrime(0,0) = 1.f;
+  hPrime(1,1) = 1.f;
+  hPrime(2,2) = 1.f;
+  hPrime(3,3) = 1.f;
+  hPrime(4,4) = 1.f;
+  hPrime(5,5) = 1.f;
+  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_GPS;
+  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
+
+  zFromX(0) = ekfState(0);
+  zFromX(1) = ekfState(1);
+  zFromX(2) = ekfState(2);
+  zFromX(3) = ekfState(3);
+  zFromX(4) = ekfState(4);
+  zFromX(5) = ekfState(5);
+
+  ekfState += K * (z - zFromX);
+
+  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
+  eye.setIdentity();
+  ekfCov = (eye - K*hPrime) * ekfCov;
+```
+
+This looks better, but still not good:
+
+![Scenario 11 with mGPS measurement update, before tuning](./images/writeup/gps-error-after.png)
+
+So we need to give Kalman Filter realistic information
+about noisiness of the process.
+This is done by adjusting process noise matrix `Q`.
+It is added to the state covariance at each `Predict` step which happens
+at IMU update frequency, which is 500Hz.
+So the values need to be quite small.
+What we have initially looks about right:
+
+```
+QPosXYStd = .2
+QPosZStd = .2
+QVelXYStd = .15
+QVelZStd = .1
+QYawStd = .12
+```
+
+And indeed it works. Our EKF works much better with these parameters and GPS updates:
+
+![Scenario 11 with mGPS measurement update, proper noise parameters](./images/writeup/gps-error-after2.png)
+
 
 Here's | A | Snappy | Table
 --- | --- | --- | ---
