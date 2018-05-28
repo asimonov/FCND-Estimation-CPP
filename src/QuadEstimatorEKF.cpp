@@ -190,7 +190,7 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float phi, float theta, float psi)
   MatrixXf RbgPrime(3, 3);
   RbgPrime.setZero();
 
-  // Return the partial derivative of the Rbg rotation matrix with respect to yaw. We call this RbgPrime.
+  // Return the partial derivative of the Rbg rotation matrix with respect to yaw/psi. We call this RbgPrime.
   // INPUTS: 
   //   roll, pitch, yaw: Euler angles at which to calculate RbgPrime
   //   
@@ -204,17 +204,17 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float phi, float theta, float psi)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-  RbgPrime(0,0) = cos(theta) * cos(psi);
-  RbgPrime(0,1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
-  RbgPrime(0,2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
+  RbgPrime(0,0) = -cos(theta) * sin(psi);
+  RbgPrime(0,1) = -sin(phi) * sin(theta) * sin(psi) - cos(phi) * cos(psi);
+  RbgPrime(0,2) = -cos(phi) * sin(theta) * sin(psi) + sin(phi) * cos(psi);
 
-  RbgPrime(1,0) = cos(theta) * sin(psi);
-  RbgPrime(1,1) = sin(phi) * sin(theta) * sin(psi) + cos(phi) * cos(psi);
-  RbgPrime(1,2) = cos(phi) * sin(theta) * sin(psi) - sin(phi) * cos(psi);
+  RbgPrime(1,0) = cos(theta) * cos(psi);
+  RbgPrime(1,1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
+  RbgPrime(1,2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
 
-  RbgPrime(2,0) = -sin(theta);
-  RbgPrime(2,1) = cos(theta) * sin(phi);
-  RbgPrime(2,2) = cos(theta) * cos(phi);
+  RbgPrime(2,0) = 0.f;
+  RbgPrime(2,1) = 0.f;
+  RbgPrime(2,2) = 0.f;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
