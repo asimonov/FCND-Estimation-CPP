@@ -271,7 +271,7 @@ Then we implement `UpdateFromGPS()` in a way that is very similar to magnetomete
 
 This looks better, but still not good:
 
-![Scenario 11 with mGPS measurement update, before tuning](./images/writeup/gps-error-after.png)
+![Scenario 11 with GPS measurement update, before tuning](./images/writeup/gps-error-after.png)
 
 So we need to give Kalman Filter realistic information
 about noisiness of the process.
@@ -282,8 +282,8 @@ So the values need to be quite small.
 What we have initially looks about right:
 
 ```
-QPosXYStd = .2
-QPosZStd = .2
+QPosXYStd = .1
+QPosZStd = .1
 QVelXYStd = .15
 QVelZStd = .1
 QYawStd = .12
@@ -291,19 +291,44 @@ QYawStd = .12
 
 And indeed it works. Our EKF works much better with these parameters and GPS updates:
 
-![Scenario 11 with mGPS measurement update, proper noise parameters](./images/writeup/gps-error-after2.png)
-
-
-Here's | A | Snappy | Table
---- | --- | --- | ---
-1 | `highlight` | **bold** | 7.41
-2 | a | b | c
-3 | *italic* | text | 403
-4 | 2 | 3 | abcd
+![Scenario 11 with GPS measurement update, proper noise parameters](./images/writeup/gps-error-after2.png)
 
 
 
 
+### Flight Evaluation
 
+#### 1. Meet the performance criteria of each step
 
+Requirements:
+* For each step of the project, the final estimator should be able to successfully meet the performance criteria with the controller provided. The estimator's parameters should be properly adjusted to satisfy each of the performance criteria elements.
+
+The scenarious 6-11 all pass the required metrics for provided controller and
+implemented estimator.
+
+#### 2. De-tune your controller to successfully fly the final desired box trajectory with your estimator and realistic sensors
+Requirements:
+* use controller from the [previous project](https://github.com/asimonov/FCND-T1-P3-Controls-CPP)
+* de-tune the controller to work with estimated state rather than ideal state
+
+Indeed, the controller tuned to perfect world does not really work with
+estimated values:
+
+![Scenario 11 with fine-tuned controller](./images/writeup/real-controller.png)
+
+But after de-tuning just a few parameters 
+
+```
+kpPosXY = 20 # was 27.4
+kpVelXY = 8  # was 9.8
+kpBank = 10  # was 14
+kpYaw = 3    # was 5
+```
+
+we get it up in the sky and
+doing something reasonable:
+
+![Scenario 11 with de-tuned controller](./images/writeup/detuned-controller.png)
+
+Well, sort of :)
 
