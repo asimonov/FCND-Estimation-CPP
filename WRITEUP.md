@@ -185,19 +185,14 @@ follows:
 ```cpp
   //ekfState: x,y,z,vx,vy,vz,yaw
   hPrime(6) = 1.f;
-  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_Mag;
-  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
 
-  float diff = magYaw - ekfState(6);
-  if (diff > F_PI) diff -= 2.f*F_PI;
-  if (diff < -F_PI) diff += 2.f*F_PI;
-  zFromX(0) = magYaw - diff;
-
-  ekfState += K * (z - zFromX);
-
-  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
-  eye.setIdentity();
-  ekfCov = (eye - K*hPrime) * ekfCov;
+  zFromX = hPrime * ekfState;
+  if (magYaw - zFromX[0] > F_PI) {
+    zFromX[0] += 2 * F_PI;
+  }
+  if (magYaw - zFromX[0] < -F_PI) {
+    zFromX[0] -= 2 * F_PI;
+  }
 ```
 
 This works as expected and we then tune `QYawStd = .12` so that
@@ -252,8 +247,6 @@ Then we implement `UpdateFromGPS()` in a way that is very similar to magnetomete
   hPrime(3,3) = 1.f;
   hPrime(4,4) = 1.f;
   hPrime(5,5) = 1.f;
-  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_GPS;
-  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
 
   zFromX(0) = ekfState(0);
   zFromX(1) = ekfState(1);
@@ -261,12 +254,6 @@ Then we implement `UpdateFromGPS()` in a way that is very similar to magnetomete
   zFromX(3) = ekfState(3);
   zFromX(4) = ekfState(4);
   zFromX(5) = ekfState(5);
-
-  ekfState += K * (z - zFromX);
-
-  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
-  eye.setIdentity();
-  ekfCov = (eye - K*hPrime) * ekfCov;
 ```
 
 This looks better, but still not good:
@@ -303,7 +290,7 @@ And indeed it works. Our EKF works much better with these parameters and GPS upd
 Requirements:
 * For each step of the project, the final estimator should be able to successfully meet the performance criteria with the controller provided. The estimator's parameters should be properly adjusted to satisfy each of the performance criteria elements.
 
-The scenarious 6-11 all pass the required metrics for provided controller and
+The scenarios 6-11 all pass the required metrics for provided controller and
 implemented estimator.
 
 #### 2. De-tune your controller to successfully fly the final desired box trajectory with your estimator and realistic sensors
@@ -311,24 +298,19 @@ Requirements:
 * use controller from the [previous project](https://github.com/asimonov/FCND-T1-P3-Controls-CPP)
 * de-tune the controller to work with estimated state rather than ideal state
 
-Indeed, the controller tuned to perfect world does not really work with
-estimated values:
+We see that the controller tuned to perfect world overshoots in x/y directions:
 
 ![Scenario 11 with fine-tuned controller](./images/writeup/real-controller.png)
 
 But after de-tuning just a few parameters 
 
 ```
-kpPosXY = 20 # was 27.4
-kpVelXY = 8  # was 9.8
-kpBank = 10  # was 14
-kpYaw = 3    # was 5
+kpPosXY = 24.07 # was 27.4
+kpVelXY = 9.32  # was 9.8
 ```
 
-we get it up in the sky and
-doing something reasonable:
+we get it to track the trajectory better:
 
 ![Scenario 11 with de-tuned controller](./images/writeup/detuned-controller.png)
 
-Well, sort of :)
 
