@@ -281,6 +281,13 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   float yawRateCmd=0;
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   float err = yawCmd - yaw;
+  if (err > F_PI) {
+    err -= 2 * F_PI;
+  }
+  if (err < -F_PI) {
+    err += 2 * F_PI;
+  }
+
   // because z is down it is negative for rotating counterclockwise
   yawRateCmd += kpYaw * err;
   /////////////////////////////// END STUDENT CODE ////////////////////////////

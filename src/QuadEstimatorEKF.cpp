@@ -90,8 +90,6 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   // SMALL ANGLE GYRO INTEGRATION:
-  // (replace the code below)
-  // make sure you comment it out when you add your own code -- otherwise e.g. you might integrate yaw twice
 
   //ekfState: x,y,z,vx,vy,vz,yaw
   Quaternion<float> q = Quaternion<float>::FromEulerYPR(ekfState(6), pitchEst, rollEst);
@@ -167,6 +165,7 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+
   //ekfState: x,y,z,vx,vy,vz,yaw
   predictedState(0) += curState(3)*dt;
   predictedState(1) += curState(4)*dt;
@@ -204,6 +203,7 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float phi, float theta, float psi)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+
   RbgPrime(0,0) = -cos(theta) * sin(psi);
   RbgPrime(0,1) = -sin(phi) * sin(theta) * sin(psi) - cos(phi) * cos(psi);
   RbgPrime(0,2) = -cos(phi) * sin(theta) * sin(psi) + sin(phi) * cos(psi);
@@ -212,9 +212,10 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float phi, float theta, float psi)
   RbgPrime(1,1) = sin(phi) * sin(theta) * cos(psi) - cos(phi) * sin(psi);
   RbgPrime(1,2) = cos(phi) * sin(theta) * cos(psi) + sin(phi) * sin(psi);
 
-  RbgPrime(2,0) = 0.f;
-  RbgPrime(2,1) = 0.f;
-  RbgPrime(2,2) = 0.f;
+  //these are zero already
+  //  RbgPrime(2,0) = 0.f;
+  //  RbgPrime(2,1) = 0.f;
+  //  RbgPrime(2,2) = 0.f;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -260,12 +261,11 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
   gPrime.setIdentity();
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-  gPrime(0,3) = dt;
-  gPrime(1,4) = dt;
-  gPrime(2,5) = dt;
-  gPrime(3,6) = dt * (RbgPrime(0,0) * accel[0] + RbgPrime(0,1) * accel[1] + RbgPrime(0,2) * accel[2]);
-  gPrime(4,6) = dt * (RbgPrime(1,0) * accel[0] + RbgPrime(1,1) * accel[1] + RbgPrime(1,2) * accel[2]);
-  gPrime(5,6) = dt * (RbgPrime(2,0) * accel[0] + RbgPrime(2,1) * accel[1] + RbgPrime(2,2) * accel[2]);
+
+  gPrime(0,3) = gPrime(1,4) = gPrime(2,5) = dt;
+  gPrime(3,6) = dt * (RbgPrime(0) * accel).sum();
+  gPrime(4,6) = dt * (RbgPrime(1) * accel).sum();
+  gPrime(5,6) = dt * (RbgPrime(2) * accel).sum();
 
   ekfCov = gPrime*(ekfCov*gPrime.transpose()) + Q;
 
@@ -292,6 +292,7 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   //  - The GPS measurement covariance is available in member variable R_GPS
   //  - this is a very simple update
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+
   //ekfState: x,y,z,vx,vy,vz,yaw
   hPrime(0,0) = 1.f;
   hPrime(1,1) = 1.f;
@@ -299,8 +300,6 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   hPrime(3,3) = 1.f;
   hPrime(4,4) = 1.f;
   hPrime(5,5) = 1.f;
-  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_GPS;
-  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
 
   zFromX(0) = ekfState(0);
   zFromX(1) = ekfState(1);
@@ -308,13 +307,6 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   zFromX(3) = ekfState(3);
   zFromX(4) = ekfState(4);
   zFromX(5) = ekfState(5);
-
-  ekfState += K * (z - zFromX);
-
-  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
-  eye.setIdentity();
-  ekfCov = (eye - K*hPrime) * ekfCov;
-
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -337,21 +329,17 @@ void QuadEstimatorEKF::UpdateFromMag(float magYaw)
   //  - The magnetomer measurement covariance is available in member variable R_Mag
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+
   //ekfState: x,y,z,vx,vy,vz,yaw
   hPrime(6) = 1.f;
-  MatrixXf tmp = hPrime * (ekfCov * hPrime.transpose()) + R_Mag;
-  MatrixXf K = ekfCov * hPrime.transpose() * tmp.inverse();
 
-  float diff = magYaw - ekfState(6);
-  if (diff > F_PI) diff -= 2.f*F_PI;
-  if (diff < -F_PI) diff += 2.f*F_PI;
-  zFromX(0) = magYaw - diff;
-
-  ekfState += K * (z - zFromX);
-
-  MatrixXf eye(QUAD_EKF_NUM_STATES,QUAD_EKF_NUM_STATES);
-  eye.setIdentity();
-  ekfCov = (eye - K*hPrime) * ekfCov;
+  zFromX = hPrime * ekfState;
+  if (magYaw - zFromX[0] > F_PI) {
+    zFromX[0] += 2 * F_PI;
+  }
+  if (magYaw - zFromX[0] < -F_PI) {
+    zFromX[0] -= 2 * F_PI;
+  }
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
