@@ -19,12 +19,13 @@ minMotorThrust = .1
 maxMotorThrust = 4.5
 
 # Position control gains
-kpPosXY = 27.4
+# for xy PD control using rise time 0.32s delta 0.95
+kpPosXY = 24.07
 kpPosZ = 15.4
 KiPosZ = 20
 
 # Velocity control gains
-kpVelXY = 9.8
+kpVelXY = 9.32
 kpVelZ = 6.28
 
 # Angle control gains
